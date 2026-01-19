@@ -1,0 +1,33 @@
+
+kakao:
+  api:
+    key: dbc7ca4db690b85ce47c77bb8947b264
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+
+  h2:
+    console:
+      enabled: true
+
+  ai:
+    google:
+      genai:
+        #        api-key: ${GOOGLE_API_KEY:your_api_key_here}
+        api-key: AIzaSyDMvW-bKgCD7nXKjrIr4izkyyN5EUuR-rw
+        model:
+        # chat:
+        #   options:
+        #     model: gemini-2.0-flash-exp
+
+server:
+  port: 8081
