@@ -14,5 +14,5 @@ import java.util.List;
 public class RecommendResponseDto {
     private List<KakaoPlaceDto> places;
     private int totalCount;
-    private String category;
+    private String tmpText;
 }

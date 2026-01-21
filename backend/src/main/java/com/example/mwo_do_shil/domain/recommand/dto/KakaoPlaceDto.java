@@ -8,12 +8,12 @@ import lombok.*;
 @NoArgsConstructor
 public class KakaoPlaceDto {
     private Long id;
-    private String placeName;
-    private String categoryName;
-    private String addressName;
+    private String place_name;
+    private String category_name;
+    private String address_name;
     private String phone;
     private String x;
     private String y;
-    private String placeUrl;
+    private String place_url;
     private String distance;
 }
