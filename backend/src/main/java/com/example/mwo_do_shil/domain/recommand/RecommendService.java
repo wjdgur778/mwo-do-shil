@@ -46,64 +46,7 @@ public class RecommendService {
             BigDecimal maxX,
             BigDecimal maxY) {
         // kakao local api 호출
-//        List<KakaoPlaceDto> stores = getStoreList(minX, minY, maxX, maxY);
-        List<KakaoPlaceDto> stores = List.of(
-                KakaoPlaceDto.builder()
-                        .address_name("경기 하남시 망월동 1125")
-                        .place_name("음식점")
-                        .category_name("음식점 > 일식 > 돈까스,우동")
-                        .distance("")
-                        .id(2074111412L)
-                        .phone("0503-7152-9277")
-                        .place_name("다이몬규카츠")
-                        .place_url("http://place.map.kakao.com/2074111412")
-                        .address_name("경기 하남시 미사강변동로 100-1")
-                        .x("127.19320884501727")
-                        .y("37.5639740622423")
-                        .build(),
-
-                KakaoPlaceDto.builder()
-                        .address_name("경기 하남시 망월동 1100")
-                        .place_name("음식점")
-                        .category_name("음식점 > 일식")
-                        .distance("")
-                        .id(179237040L)
-                        .phone("")
-                        .place_name("오토시")
-                        .place_url("http://place.map.kakao.com/179237040")
-                        .address_name("경기 하남시 미사강변동로 95")
-                        .x("127.1920371194806")
-                        .y("37.563876864498795")
-                        .build(),
-
-                KakaoPlaceDto.builder()
-                        .address_name("경기 하남시 망월동 1125")
-                        .place_name("음식점")
-                        .category_name("음식점 > 일식 > 초밥,롤")
-                        .distance("")
-                        .id(1824273719L)
-                        .phone("031-794-4447")
-                        .place_name("스시코호시 미사")
-                        .place_url("http://place.map.kakao.com/1824273719")
-                        .address_name("경기 하남시 미사강변동로 100-1")
-                        .x("127.193600436917")
-                        .y("37.5639617078272")
-                        .build(),
-
-                KakaoPlaceDto.builder()
-                        .address_name("경기 하남시 망월동 1106")
-                        .place_name("카페")
-                        .category_name("음식점 > 카페 > 커피전문점 > 빽다방")
-                        .distance("")
-                        .id(1829132512L)
-                        .phone("031-796-2329")
-                        .place_name("빽다방 하남미사역점")
-                        .place_url("http://place.map.kakao.com/1829132512")
-                        .address_name("경기 하남시 미사강변동로 85")
-                        .x("127.19188086899027")
-                        .y("37.562531932790755")
-                        .build()
-        );
+        List<KakaoPlaceDto> stores = getStoreList(minX, minY, maxX, maxY);
         // todo
         //  DB에서 이미 추천을 받아 기록되어있는 place들을 검색 [캐싱 전략 바로 세우기]
 
@@ -115,6 +58,9 @@ public class RecommendService {
         String result = llmRouter.route(LLMType.GEMINI).generate(new LLMRequest(Map.of(
                 "alcohol",alcohol
                 ,"weather", weather
+                // 검색은 한 지역내에 있는 가게를 기준으로 하기 때문에 주소가 비슷하다.
+                // 데이터 다이어트를 위해 상단에 한번만 address를 고정한다.
+                ,"address", stores.get(0).getAddress_name()+" 주변"
         )
                 ,stores
         ));
