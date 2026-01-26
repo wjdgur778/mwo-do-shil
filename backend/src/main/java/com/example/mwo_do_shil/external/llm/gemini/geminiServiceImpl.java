@@ -40,7 +40,6 @@ public class geminiServiceImpl implements LLMService {
         System.out.println(finalPrompt);
 
         // 1. 구글 검색(Google Search) 기능을 담은 도구 생성 (웹 그라운딩 활성화)
-
         GoogleSearch googleSearch = GoogleSearch.builder().build();
 
         // 2. Tool 객체에 googleSearch 주입
@@ -61,29 +60,29 @@ public class geminiServiceImpl implements LLMService {
                         finalPrompt,
                         config);
         System.out.println("llm api 호출 완료");
-        System.out.println(response.usageMetadata());
+
+        String cleanJson = response.text()
+                .replaceAll("```json", "")
+                .replaceAll("```", "")
+                .trim();
+
 
 
         // todo
-        //  1.결과를 DTO에 반환하기
-        //  2.
-        /**
-         *
-         * String cleanJson = rawResponse
-         *         .replaceAll("```json", "")
-         *         .replaceAll("```", "")
-         *         .trim();
-         */
-        /**
-         * 테스트 결과 text
-         * ```json\n[\n  {\n    \"id\": 725163522,\n    \"reason\": \"곱창이랑 소주 조합은 말해 뭐해~ 겉바속쫀한 곱창에 시원한 소주 한 잔이면 스트레스 싹 풀릴걸? 💖 김치말이국수도 꼭 시켜봐!\",\n    \"score\": 950\n  },\n
-         * {\n    \"id\": 1026252920,\n    \"reason\": \"고기 구워 먹으면서 소주 한 잔! 캬~ 🤤 여기 우대갈비가 그렇게 맛있대! 맑은 날씨에 맛있는 고기랑 소주면 여기가 천국이지! ✨\",\n    \"score\": 900\n  },\n
-         * {\n    \"id\": 2020741818,\n    \"reason\": \"얼얼한 마라탕에 소주 한 잔? 🔥 의외로 궁합 최고라구! 매콤한 마라탕 국물이 소주를 술술 넘어가게 할 거야. 😋\",\n    \"score\": 880\n  },\n
-         * {\n    \"id\": 1526863270,\n    \"reason\": \"김치찌개 맛집 인정! 얼큰한 김치찌개에 소주 한 잔이면 밥도둑, 술도둑 따로 없지~ 💯 맑은 날씨에 뜨끈한 찌개 강추! 👍\",\n    \"score\": 850\n  },\n
-         * {\n    \"id\": 898391064,\n    \"reason\": \"든든하게 밥 먹고 소주 한 잔? 🍚 얼큰한 찌개랑 소주 조합이면 든든함과 시원함 둘 다 잡을 수 있어! 😋\",\n    \"score\": 800\n  }\n]\n```
-         */
+        //  1. 결과를 DTO에 반환하기
+        //  1.1 받은 id를 바탕으로 front가 필요한 데이터로 변환하는 과정이 필요하다.
+        //  2. 프롬프트 최적화
+        //  3. 사용량 확인
+        //  4.
+//         테스트 결과 text
+//         ```json\n[\n  {\n    \"id\": 725163522,\n    \"reason\": \"곱창이랑 소주 조합은 말해 뭐해~ 겉바속쫀한 곱창에 시원한 소주 한 잔이면 스트레스 싹 풀릴걸? 💖 김치말이국수도 꼭 시켜봐!\",\n    \"score\": 950\n  },\n
+//         {\n    \"id\": 1026252920,\n    \"reason\": \"고기 구워 먹으면서 소주 한 잔! 캬~ 🤤 여기 우대갈비가 그렇게 맛있대! 맑은 날씨에 맛있는 고기랑 소주면 여기가 천국이지! ✨\",\n    \"score\": 900\n  },\n
+//         {\n    \"id\": 2020741818,\n    \"reason\": \"얼얼한 마라탕에 소주 한 잔? 🔥 의외로 궁합 최고라구! 매콤한 마라탕 국물이 소주를 술술 넘어가게 할 거야. 😋\",\n    \"score\": 880\n  },\n
+//         {\n    \"id\": 1526863270,\n    \"reason\": \"김치찌개 맛집 인정! 얼큰한 김치찌개에 소주 한 잔이면 밥도둑, 술도둑 따로 없지~ 💯 맑은 날씨에 뜨끈한 찌개 강추! 👍\",\n    \"score\": 850\n  },\n
+//         {\n    \"id\": 898391064,\n    \"reason\": \"든든하게 밥 먹고 소주 한 잔? 🍚 얼큰한 찌개랑 소주 조합이면 든든함과 시원함 둘 다 잡을 수 있어! 😋\",\n    \"score\": 800\n  }\n]\n```
 
-        return response.text();
+
+        return cleanJson;
     }
 
     /**

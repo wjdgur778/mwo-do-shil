@@ -1,4 +1,4 @@
-package com.example.mwo_do_shil.external;
+package com.example.mwo_do_shil.external.kakao;
 
 import com.example.mwo_do_shil.domain.recommand.dto.KakaoPlaceDto;
 import com.example.mwo_do_shil.domain.recommand.dto.KakaoSearchResponseDto;
