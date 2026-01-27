@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/recommend")
+@RequestMapping("api/recommend")
 public class RecommendController {
 
     private final RecommendService recommendService;

@@ -75,7 +75,11 @@ public class RecommendService {
         // 추천된 결과값과 가게의 정보를 합치는 과정이 필요하다.
         // 이때 가게갯수 * 추천된 갯수 만큼 순회하는것보다 map으로 데이터를 옮기고 id가 일치하는지 확인하는게 더 빠르다.
         Map<Long, KakaoPlaceDto> storeMap = stores.stream()
-                .collect(Collectors.toMap(KakaoPlaceDto::getId, Function.identity()));
+                .collect(Collectors.toMap(
+                        KakaoPlaceDto::getId,
+                        Function.identity(),
+                        (old,replace)->old
+                ));
 
         List<RecommendResponseDto> response = recommendPlaceDtos.stream()
                 .map(dto -> RecommendResponseDto.builder()
