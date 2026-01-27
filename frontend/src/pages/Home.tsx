@@ -256,7 +256,7 @@ export default function Home() {
             <p className="text-sm font-medium text-gray-600 whitespace-nowrap">
               {selectedCategory 
                 ? <><span className="text-primary font-bold">지도의 마커</span>를 누르거나 다른 <span className="text-primary font-bold">주종</span>을 선택해보세요!</>
-                : <>상단의 <span className="text-primary font-bold">주종 아이콘</span>을 선택하면 주변 맛집을 추천해드려요!</>
+                : <>상단의 <span className="text-primary font-bold">주종</span>을 선택해보세요!</>
               }
             </p>
           </div>
