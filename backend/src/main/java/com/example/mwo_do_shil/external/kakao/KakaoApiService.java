@@ -27,7 +27,12 @@ public class KakaoApiService {
     @Value("${kakao.api.key}")
     private String kakaoApiKey;
 
-    @Async("kakaoExecutor")
+    /**
+     * memo
+     *  webclient를 사용하면 비동기로 호출하게 됨으로 async를 수행하면 오히려 남는 idle 쓰레드가 생기게 됨으로 삭제할 필요가 있다.
+     *  이에 대해서는 더욱 자세히게 다뤄야 한다.
+     */
+//    @Async("kakaoExecutor")
     public CompletableFuture<KakaoSearchResponseDto> searchPlacesAsync(RectDto rect) {
         try {
             // 키워드는 :"맛집" 으로 통일
