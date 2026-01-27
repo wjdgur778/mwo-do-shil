@@ -1,0 +1,38 @@
+# Application Configuration Template
+# Copy this file to application.yml and update with your actual API keys
+# DO NOT commit the actual application.yml file with real API keys
+
+kakao:
+  api:
+    key: YOUR_KAKAO_API_KEY_HERE
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    defer-datasource-initialization: true
+
+  h2:
+    console:
+      enabled: true
+
+  ai:
+    google:
+      genai:
+        api-key: YOUR_GOOGLE_API_KEY_HERE
+        # model: gemini-2.0-flash-exp
+
+server:
+  port: 8081
+
+# Logging configuration for development
+logging:
+  level:
+    com.example.mwo_do_shil: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG
