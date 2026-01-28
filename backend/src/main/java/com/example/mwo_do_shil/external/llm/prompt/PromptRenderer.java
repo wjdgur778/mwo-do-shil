@@ -1,6 +1,7 @@
 package com.example.mwo_do_shil.external.llm.prompt;
 
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Component;
 
@@ -11,15 +12,13 @@ import java.util.EnumMap;
 import java.util.Map;
 
 @Component
+@RequiredArgsConstructor
 public class PromptRenderer {
 
     private final ResourceLoader resourceLoader;
 
     private final Map<PromptType, String> cache = new EnumMap<>(PromptType.class);
 
-    public PromptRenderer(ResourceLoader resourceLoader) {
-        this.resourceLoader = resourceLoader;
-    }
     // 캐싱을 통해 반복적인 파일 IO 작업을 방지
     @PostConstruct
     public void preload() {
@@ -35,6 +34,16 @@ public class PromptRenderer {
         }
         return applyVariables(template, variables);
     }
+
+    public String render(PromptType type) {
+        String template = cache.get(type);
+        System.out.println(template);
+        if (template == null) {
+            throw new IllegalStateException("프롬프트 캐시 누락: " + type);
+        }
+        return template;
+    }
+
 
     private String loadTemplate(PromptType type) {
         String path = "classpath:prompts/" + type.getFileName();

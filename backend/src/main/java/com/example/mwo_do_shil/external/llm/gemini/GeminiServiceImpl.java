@@ -1,7 +1,6 @@
 package com.example.mwo_do_shil.external.llm.gemini;
 
 import com.example.mwo_do_shil.domain.recommand.dto.KakaoPlaceDto;
-import com.example.mwo_do_shil.domain.store.dto.StoreResponseDto;
 import com.example.mwo_do_shil.external.llm.LLMRequest;
 import com.example.mwo_do_shil.external.llm.LLMService;
 import com.example.mwo_do_shil.external.llm.gemini.dto.InputDto;
@@ -11,21 +10,22 @@ import com.google.genai.Client;
 import com.google.genai.types.*;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 // 빈 이름 "gemini" 설정
+@Slf4j
 @Service("gemini")
 @RequiredArgsConstructor
-public class geminiServiceImpl implements LLMService {
+public class GeminiServiceImpl implements LLMService {
     private final PromptRenderer promptRenderer;
     private final Gson gson;
     private final Client client;
+
     // The client gets the API key from the environment variable `GEMINI_API_KEY`.
     public String generate(LLMRequest llmRequest){
         String prompt = promptRenderer.render(
