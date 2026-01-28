@@ -1,12 +1,14 @@
 import { Restaurant } from "@shared/schema";
 import { motion } from "framer-motion";
-import { X, MapPin, Sparkles, Utensils } from "lucide-react";
+import { X, MapPin, Sparkles, Utensils, ArrowRight } from "lucide-react";
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
   onClose: () => void;
 }
-
+const handleMobileNavi = (placeUrl: string) => {
+  window.location.href = placeUrl;  // 같은탭 이동
+};
 export function RestaurantCard({ restaurant, onClose }: RestaurantCardProps) {
   return (
     <motion.div
@@ -14,83 +16,94 @@ export function RestaurantCard({ restaurant, onClose }: RestaurantCardProps) {
       animate={{ y: 0, opacity: 1 }}
       exit={{ y: "100%", opacity: 0 }}
       transition={{ type: "spring", damping: 25, stiffness: 300 }}
-      className="fixed bottom-0 left-0 right-0 z-50 p-4 md:p-6"
+      // 1. 컨테이너: 화면 전체에서 하단 중앙 정렬을 담당
+      className="fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 pointer-events-none"
     >
-      <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden max-w-md mx-auto relative">
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 bg-black/5 hover:bg-black/10 rounded-full transition-colors"
-        >
-          <X className="w-5 h-5 text-gray-700" />
-        </button>
+      <div 
+        // 2. 카드 본체: pointer-events-auto로 클릭 가능하게 설정
+        // max-h-[45dvh]: 화면 높이의 45%를 넘지 않도록 설정 (절반보다 약간 작게)
+        // w-full max-w-md: 모바일에선 꽉 차게, 데스크탑에선 적절한 너비
+        className="bg-white rounded-[2.5rem] shadow-[0_-10px_40px_rgba(0,0,0,0.12)] border border-gray-100 
+                   overflow-hidden w-full max-w-md pointer-events-auto flex flex-col max-h-[45dvh]"
+      >
+        {/* 상단 이미지 영역 - 높이를 비율(flex-shrink-0)로 조절 */}
+        <div className="relative h-32 sm:h-40 shrink-0 overflow-hidden bg-gray-100">
+          <button 
+            onClick={onClose}
+            className="absolute top-4 right-4 z-20 p-2 bg-white/20 hover:bg-black/40 backdrop-blur-md rounded-full transition-all"
+          >
+            <X className="w-4 h-4 text-gray" />
+          </button>
 
-        {/* Image Header */}
-        <div className="h-48 relative overflow-hidden bg-gray-100">
           {restaurant.imageUrl ? (
             <>
-              {/* Unsplash image with descriptive comment */}
-              {/* Restaurant food or interior based on category */}
               <img 
                 src={restaurant.imageUrl} 
-                alt={restaurant.name}
+                alt={restaurant.place_name}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
             </>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-orange-100">
-              <Utensils className="w-12 h-12 text-primary/40" />
+            <div className="w-full h-full flex items-center justify-center bg-orange-50">
+              <Utensils className="w-10 h-10 text-primary/30" />
             </div>
           )}
           
-          <div className="absolute bottom-4 left-6 text-white">
-            <div className="flex items-center space-x-2 mb-1">
-              <span className="px-2 py-0.5 rounded-md bg-primary text-xs font-bold uppercase tracking-wider">
-                {restaurant.category.toUpperCase()} PAIRING
-              </span>
-            </div>
-            <h2 className="text-2xl font-bold font-display">{restaurant.name}</h2>
+          <div className="absolute bottom-3 left-6 text-gray">
+            <span className="px-2 py-0.5 rounded-md bg-primary text-[10px] font-black uppercase tracking-widest mb-1 inline-block">
+              PAIRING 
+            </span>
+            <h2 className="text-xl sm:text-2xl font-bold font-display truncate max-w-[280px]">
+              {restaurant.place_name}
+            </h2>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-5">
-          {/* AI Pairing Reason - Highlighted */}
-          <div className="bg-orange-50 rounded-2xl p-4 border border-orange-100">
-            <div className="flex items-center space-x-2 text-primary font-bold mb-2">
-              <Sparkles className="w-4 h-4" />
-              <span className="text-sm uppercase tracking-wide">AI Pairing Analysis</span>
+        {/* 하단 콘텐츠 영역 - 내용이 길어지면 내부 스크롤 발생 */}
+        <div className="p-5 sm:p-6 space-y-4 overflow-y-auto scrollbar-hide flex-1">
+          {/* AI Pairing Reason */}
+          <div className="bg-orange-50/50 rounded-2xl p-4 border border-orange-100/50">
+            <div className="flex items-center space-x-2 text-primary font-bold mb-1.5">
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="text-[10px] uppercase tracking-wider">AI Pairing Analysis</span>
             </div>
-            <p className="text-gray-700 font-medium leading-relaxed text-sm md:text-base">
-              "{restaurant.pairingReason}"
+            <p className="text-gray-700 font-medium leading-relaxed text-sm">
+              "{restaurant.reason}"
             </p>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-start space-x-3 text-gray-600">
-              <Utensils className="w-5 h-5 mt-0.5 shrink-0 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Signature Menu</p>
-                <p className="font-semibold text-gray-900">{restaurant.signatureMenu}</p>
+          <div className="grid grid-cols-2 gap-4 pt-1">
+            <div className="flex items-start space-x-2.5">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <Sparkles className="w-4 h-4 text-gray-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-400 font-bold uppercase">AI Match</p>
+                <p className="font-bold text-gray-900 text-sm">{restaurant.score}점</p>
               </div>
             </div>
 
-            <div className="flex items-start space-x-3 text-gray-600">
-              <MapPin className="w-5 h-5 mt-0.5 shrink-0 text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-400 font-bold uppercase tracking-wide">Location</p>
-                <p className="font-medium">{restaurant.address || "서울 특별시"}</p>
+            <div className="flex items-start space-x-2.5">
+              <div className="p-2 bg-gray-50 rounded-lg">
+                <MapPin className="w-4 h-4 text-gray-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] text-gray-400 font-bold uppercase">Location</p>
+                <p className="font-medium text-gray-900 text-xs truncate">
+                  {restaurant.address_name || "서울 특별시"}
+                </p>
               </div>
             </div>
           </div>
 
-          <button className="w-full py-3.5 bg-gray-900 text-white font-bold rounded-xl shadow-lg hover:bg-gray-800 active:scale-[0.98] transition-all flex items-center justify-center space-x-2">
-            <span>길찾기</span>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </button>
+      <button 
+          onClick={() => handleMobileNavi(restaurant.place_url)}
+          className="w-full py-3.5 bg-gray-950 text-white font-bold rounded-2xl shadow-xl hover:bg-gray-800 active:scale-[0.97] transition-all flex items-center justify-center space-x-2 group"
+        >
+          <span className="text-sm">카카오맵 바로가기</span>
+          <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+        </button>
         </div>
       </div>
     </motion.div>

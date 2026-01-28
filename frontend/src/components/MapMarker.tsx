@@ -31,7 +31,7 @@ export function MapMarker({ restaurant, isSelected, onClick }: MapMarkerProps) {
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
             className="bg-white px-4 py-2 rounded-xl shadow-lg border border-primary/20 relative"
           >
-            <div className="font-bold text-gray-800 text-sm">{restaurant.name}</div>
+            <div className="font-bold text-gray-800 text-sm">{restaurant.place_name}</div>
             <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-primary/20 rotate-45"></div>
           </motion.div>
         </CustomOverlayMap>
