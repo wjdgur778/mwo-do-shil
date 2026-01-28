@@ -12,7 +12,7 @@ export const CATEGORIES = [
   { id: 'whiskey', name: '위스키', icon: '🥃' },
   { id: 'sake', name: '사케', icon: '🍶' },
   { id: 'makgeolli', name: '막걸리', icon: '🥣' },
-  { id: 'cocktail', name: '칵테일', icon: '🍸' },
+  { id: 'cocktail', name: '칵테일', icon: '🍸' }
 ] as const;
 
 export function CategoryBar({ selectedCategory, onSelectCategory }: CategoryBarProps) {
