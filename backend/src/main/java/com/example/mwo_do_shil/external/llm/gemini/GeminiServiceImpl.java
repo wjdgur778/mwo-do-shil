@@ -26,17 +26,15 @@ public class GeminiServiceImpl implements LLMService {
     private final Gson gson;
     private final Client client;
 
-    // The client gets the API key from the environment variable `GEMINI_API_KEY`.
-    public String generate(LLMRequest llmRequest){
+    // 1차 필터링을 거친 가게를 중심으로 웹그라운딩을 통한 추천 결과 generate
+    public String generateWithWebGrounding(LLMRequest llmRequest) {
         String prompt = promptRenderer.render(
                 PromptType.STORE_ALCOHOL_PAIRING,
                 llmRequest.getParams()
-                );
-
+        );
+        String stores = gson.toJson(llmRequest.getData());
         //랜더링한 프롬포트에 가게 리스트 붙이기
-        String stores = toInput((List<KakaoPlaceDto>)llmRequest.getData());
-
-        String finalPrompt = prompt + "\n가게 리스트: \n" + stores;
+        String finalPrompt = prompt + "\n가게 리스트: \n" +stores;
         System.out.println(finalPrompt);
 
         // 1. 구글 검색(Google Search) 기능을 담은 도구 생성 (웹 그라운딩 활성화)
@@ -53,7 +51,6 @@ public class GeminiServiceImpl implements LLMService {
                 .build();
 
         //4. 실제 llm api에 요청하기
-        System.out.println("llm api 호출 전");
         GenerateContentResponse response =
                 client.models.generateContent(
                         "gemini-2.5-flash-lite",
@@ -61,12 +58,53 @@ public class GeminiServiceImpl implements LLMService {
                         config);
         System.out.println("llm api 호출 완료");
 
+        // 5. 웹 그라운딩 체크
+        // 2. candidates 리스트가 비어있지 않은지 확인
+        if (response.candidates().isPresent()) {
+            var candidate = response.candidates().get().get(0);
+
+            // 3. groundingMetadata가 존재하는지 확인
+            if (candidate.groundingMetadata().isPresent()) {
+                System.out.println("✅ 웹 그라운딩이 성공적으로 수행되었습니다.");
+            } else {
+                System.out.println("ℹ️ 이 답변은 모델의 내부 지식만으로 생성되었습니다.");
+            }
+        } else {
+            System.out.println("⚠️ 모델로부터 응답 후보(Candidate)를 받지 못했습니다.");
+        }
+
         String cleanJson = response.text()
                 .replaceAll("```json", "")
                 .replaceAll("```", "")
                 .trim();
 
         return cleanJson;
+    }
+
+    // 1차 필터링 수행
+    public String first_generate(LLMRequest llmRequest) {
+        String prompt = promptRenderer.render(
+                PromptType.FILTER_STORE_ALCOHOL_PAIRING,
+                llmRequest.getParams()
+        );
+        //랜더링한 프롬포트에 가게 리스트 붙이기
+        String stores = gson.toJson(llmRequest.getData());
+        String finalPrompt = prompt + "\n가게 리스트: \n" + stores;
+        System.out.println(finalPrompt);
+
+        //llm api에 요청하기
+        GenerateContentResponse response =
+                client.models.generateContent(
+                        "gemini-2.5-flash-lite",
+                        finalPrompt,
+                        null
+                );
+        System.out.println("method:first_generate / llm api 호출 완료");
+
+        return response.text()
+                .replaceAll("```json", "")
+                .replaceAll("```", "")
+                .trim();
     }
 
     /**
@@ -77,13 +115,14 @@ public class GeminiServiceImpl implements LLMService {
      *  1.2. 현 지도를 기반으로 한 검색이기 때문에 주소는 고정이라는 점을 인지한다.
      *       따라서 하나의 데이터의 주소를 파싱해서 프롬프트 상단에 고정시킨다.
      *  1.3. 술을 팔지 않는 가게는 미리 필터링 한다.
+     *
      * @param stores
      * @return
      */
-    private String toInput(List<KakaoPlaceDto>stores){
-        Set<String> excludeKeywords = Set.of("카페", "분식", "간식", "편의점", "샐러드", "패스트푸드", "도시락");
+    public static  List<InputDto> toInputList(List<KakaoPlaceDto> stores) {
+        Set<String> excludeKeywords = Set.of("카페", "분식", "간식", "편의점", "샐러드", "패스트푸드", "도시락", "제과");
 
-        List<InputDto> inputList = stores.stream()
+        return  stores.stream()
                 .filter(store -> {
                     String category = store.getCategory_name();
                     return excludeKeywords.stream()
@@ -97,7 +136,7 @@ public class GeminiServiceImpl implements LLMService {
                                 .build()
                 ).toList();
 
-        return gson.toJson(inputList);
+
     }
 
 }
