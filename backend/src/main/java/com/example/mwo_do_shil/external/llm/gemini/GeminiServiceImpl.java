@@ -132,7 +132,6 @@ public class GeminiServiceImpl implements LLMService {
                         InputDto.builder()
                                 .id(kakaoPlaceDto.getId())
                                 .n(kakaoPlaceDto.getPlace_name())
-                                .c(kakaoPlaceDto.getCategory_name())
                                 .build()
                 ).toList();
 
