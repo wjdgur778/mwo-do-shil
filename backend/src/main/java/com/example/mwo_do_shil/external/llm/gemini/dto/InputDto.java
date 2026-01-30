@@ -12,5 +12,4 @@ import lombok.NoArgsConstructor;
 public class InputDto {
     private Long id;
     private String n;
-    private String c;
 }

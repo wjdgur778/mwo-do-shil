@@ -5,6 +5,7 @@ import com.example.mwo_do_shil.external.kakao.KakaoApiService;
 import com.example.mwo_do_shil.external.llm.LLMRequest;
 import com.example.mwo_do_shil.external.llm.LLMRouter;
 import com.example.mwo_do_shil.external.llm.LLMType;
+import com.example.mwo_do_shil.external.llm.gemini.dto.InputDto;
 import com.example.mwo_do_shil.external.llm.prompt.PromptRenderer;
 import com.example.mwo_do_shil.external.weather.WeatherService;
 import com.example.mwo_do_shil.external.weather.dto.WeatherResponseDto;
@@ -24,6 +25,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.example.mwo_do_shil.external.llm.gemini.GeminiServiceImpl.toInputList;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,11 +38,6 @@ public class RecommendService {
     private final LLMRouter llmRouter;
     private final Gson gson;
 
-    /**
-     * rect
-     *
-     * @return
-     */
     public List<RecommendResponseDto> getRecommend(
             String alcohol,
             BigDecimal minX,
@@ -48,29 +46,48 @@ public class RecommendService {
             BigDecimal maxY) {
         // kakao local api 호출
         List<KakaoPlaceDto> stores = getStoreList(minX, minY, maxX, maxY);
+        // 간소화된 가게 리스트 준비
+        List<InputDto> smaller_stores = toInputList(stores);
         // todo
         //  DB에서 이미 추천을 받아 기록되어있는 place들을 검색 [캐싱 전략 바로 세우기]
 
-
-        // 이미 추천된 가게가 5개 이상이 아니라면 llm api 호출
-
+        // 날씨 api호출
         String weather = weatherService.getCurrentWeather(minX, minY, maxX, maxY);
         log.info("날씨 api호출 성공 : "+weather);
 
-
-        String result = llmRouter.route(LLMType.GEMINI).generate(new LLMRequest(Map.of(
+        // 1차 필터링
+        // 결과 : JSON 정수 배열 [1,5,22,45]
+        String filtered_stores = llmRouter.route(LLMType.GEMINI).first_generate(new LLMRequest(Map.of(
                 "alcohol", alcohol
                 , "weather", weather
                 // 검색은 한 지역내에 있는 가게를 기준으로 하기 때문에 주소가 비슷하다.
                 // 데이터 다이어트를 위해 상단에 한번만 address를 고정한다.
                 , "address", stores.get(0).getAddress_name() + " 주변"
-        )
-                , stores
+        ), smaller_stores
         ));
+        System.out.println("filtered_stores : "+filtered_stores);
+
+        // 1차 필터링에서 얻은 ID 리스트
+        List<Long> selectedIds = gson.fromJson(filtered_stores, new TypeToken<List<Long>>(){}.getType());
+
+        // 전체 간소화 가게 리스트(smaller_stores)에서 해당 ID만 추출
+        List<InputDto> nextStepStores = smaller_stores.stream()
+                .filter(store -> selectedIds.contains(store.getId()))
+                .toList();
+
+        // 2차 웹 그라운딩
+        String recommended_stores = llmRouter.route(LLMType.GEMINI).generateWithWebGrounding(new LLMRequest(Map.of(
+                "alcohol", alcohol
+                , "weather", weather
+                // 검색은 한 지역내에 있는 가게를 기준으로 하기 때문에 주소가 비슷하다.
+                // 데이터 다이어트를 위해 상단에 한번만 address를 고정한다.
+                , "address", stores.get(0).getAddress_name() + " 주변"
+        ),nextStepStores
+        ));
+
         // String 형태의 json 텍스트를 dto list로 역직렬화
-        Type type = new TypeToken<List<RecommendPlaceDto>>() {
-        }.getType();
-        List<RecommendPlaceDto> recommendPlaceDtos = gson.fromJson(result, type);
+        Type type = new TypeToken<List<RecommendPlaceDto>>() {}.getType();
+        List<RecommendPlaceDto> recommendPlaceDtos = gson.fromJson(recommended_stores, type);
 
         // 추천된 결과값과 가게의 정보를 합치는 과정이 필요하다.
         // 이때 가게갯수 * 추천된 갯수 만큼 순회하는것보다 map으로 데이터를 옮기고 id가 일치하는지 확인하는게 더 빠르다.
