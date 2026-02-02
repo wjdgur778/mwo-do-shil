@@ -1,11 +1,9 @@
-package com.example.mwo_do_shil.domain.recommand.dto;
+package com.example.mwo_do_shil.domain.recommend.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 @Getter
 @Builder

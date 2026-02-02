@@ -7,6 +7,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.resources.ConnectionProvider;
+
+import java.time.Duration;
 
 @Configuration
 public class GeminiWebClientConfig {
@@ -16,6 +20,19 @@ public class GeminiWebClientConfig {
             @Value("${ai.google.genai.api.key}")
             String apiKey
     ) {
+
+        ConnectionProvider provider =
+                ConnectionProvider.builder("gemini-pool")
+                        .maxConnections(8)                 // ⭐ 동시 호출 수
+                        .pendingAcquireMaxCount(40)        // 대기 큐
+                        .pendingAcquireTimeout(Duration.ofSeconds(40))
+                        .build();
+
+        HttpClient httpClient = HttpClient.create(provider)
+                .responseTimeout(Duration.ofSeconds(10));
+
+
+
         return WebClient.builder()
                 .baseUrl("https://generativelanguage.googleapis.com/v1beta")
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)

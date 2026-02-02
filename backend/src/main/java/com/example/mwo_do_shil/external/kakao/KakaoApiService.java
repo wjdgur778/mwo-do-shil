@@ -1,14 +1,10 @@
 package com.example.mwo_do_shil.external.kakao;
 
-import com.example.mwo_do_shil.domain.recommand.dto.KakaoPlaceDto;
-import com.example.mwo_do_shil.domain.recommand.dto.KakaoSearchResponseDto;
-import com.example.mwo_do_shil.domain.recommand.dto.RectDto;
+import com.example.mwo_do_shil.domain.recommend.dto.KakaoSearchResponseDto;
+import com.example.mwo_do_shil.domain.recommend.dto.RectDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -31,7 +27,7 @@ public class KakaoApiService {
      *  이에 대해서는 더욱 자세히게 다뤄야 한다.
      */
 //    @Async("kakaoExecutor")
-    public CompletableFuture<KakaoSearchResponseDto> searchPlacesAsync(RectDto rect) {
+    public CompletableFuture<KakaoSearchResponseDto> searchPlaces(RectDto rect) {
         try {
             // 키워드는 :"맛집" 으로 통일
             Mono<KakaoSearchResponseDto> responseMono = KakaoWebClient.get()

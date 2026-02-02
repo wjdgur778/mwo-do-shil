@@ -1,4 +1,4 @@
-package com.example.mwo_do_shil.domain.recommand;
+package com.example.mwo_do_shil.domain.recommend;
 
 import com.example.mwo_do_shil.domain.store.Store;
 import org.springframework.data.jpa.repository.JpaRepository;

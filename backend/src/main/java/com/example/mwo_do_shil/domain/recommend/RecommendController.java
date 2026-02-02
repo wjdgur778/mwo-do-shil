@@ -1,4 +1,4 @@
-package com.example.mwo_do_shil.domain.recommand;
+package com.example.mwo_do_shil.domain.recommend;
 
 import com.example.mwo_do_shil.annotation.RateLimitedApi;
 import com.example.mwo_do_shil.auth.RateLimitService;

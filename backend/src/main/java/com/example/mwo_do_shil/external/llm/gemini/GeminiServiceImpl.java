@@ -1,6 +1,6 @@
 package com.example.mwo_do_shil.external.llm.gemini;
 
-import com.example.mwo_do_shil.domain.recommand.dto.KakaoPlaceDto;
+import com.example.mwo_do_shil.domain.recommend.dto.KakaoPlaceDto;
 import com.example.mwo_do_shil.external.llm.LLMRequest;
 import com.example.mwo_do_shil.external.llm.LLMService;
 import com.example.mwo_do_shil.external.llm.gemini.dto.InputDto;
@@ -72,6 +72,8 @@ public class GeminiServiceImpl implements LLMService {
         //랜더링한 프롬포트에 가게 리스트 붙이기
         String storesJson = gson.toJson(llmRequest.getData());
         String finalPrompt = prompt + "\n가게 리스트:\n" + storesJson;
+
+        System.out.println("웹그라운딩 프롬프트 : \n"+finalPrompt);
 
         Map<String, Object> requestBody = Map.of(
                 "contents", List.of(
