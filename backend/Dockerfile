@@ -7,7 +7,7 @@ COPY src /app/src
 RUN gradle clean build -x test --no-daemon
 
 # 2단계: 실행 스테이지 (가벼운 JRE 환경)
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jre-jammy
 WORKDIR /app
 # 빌드 단계에서 생성된 jar 파일만 쏙 가져오기
 COPY --from=build /app/build/libs/*.jar app.jar
