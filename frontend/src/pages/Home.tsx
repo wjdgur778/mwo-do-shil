@@ -122,7 +122,8 @@ export default function Home() {
     try {
       // 1. 추천 API 호출
       console.log("추천 API 호출 시작:", alcohol);
-      const data = await recommendService.getRecommendations(alcohol, bounds);
+      // const data = await recommendService.getRecommendations(alcohol, bounds);
+      const data = MOCK_DATA;
       console.log("추천 API 응답 받음:", data);
       
       // 2. 추천 성공 시 즉시 서버의 최신 횟수 조회 (UI 업데이트를 위해 먼저 호출)
@@ -151,7 +152,7 @@ export default function Home() {
             colors: ['#FF9F43', '#FFC078', '#FFD8A8']
           });
         }
-      }, 1000);
+      }, 8000);
 
     } catch (error: any) {
       console.error("추천 실패", error);
@@ -300,10 +301,15 @@ export default function Home() {
                     animate={{ opacity: 1, x: 0 }}
                     className="absolute left-4 -bottom-8 flex items-center gap-1.5 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-100"
                   >
-                    <Sparkles className={`w-3 h-3 ${callCount >= MAX_CALLS ? 'text-red-500' : 'text-primary'}`} />
-                    <span className="text-[11px] font-bold text-gray-600">
-                      오늘 추천 <span className={callCount >= MAX_CALLS ? 'text-red-500' : 'text-primary'}>{callCount}</span> / {MAX_CALLS}
-                    </span>
+                      <Sparkles className={`w-3 h-3 ${callCount >= MAX_CALLS ? 'text-red-500' : 'text-primary'}`} />
+                      {callCount > MAX_CALLS ?
+                        <span className="text-[11px] font-bold text-gray-600">
+                          안녕하세요. 주인님
+                        </span>:
+                        <span className="text-[11px] font-bold text-gray-600">
+                          오늘 추천 <span className={callCount == MAX_CALLS ? 'text-red-500' : 'text-primary'}>{callCount}</span> / {MAX_CALLS}
+                        </span>
+                      }
                   </motion.div>
                 </div>
               )}
@@ -361,18 +367,31 @@ export default function Home() {
       </div>
 
       {/* --- 한도 초과 알림 모달 --- */}
-      <AnimatePresence>
+        <AnimatePresence>
         {showLimitAlert && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="absolute inset-0 z-[110] flex items-center justify-center px-6"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center px-6"
           >
-            {/* 배경 블러 효과를 위한 오버레이 */}
-            <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setShowLimitAlert(false)} />
-            
-            <div className="relative bg-white/95 backdrop-blur-lg p-6 rounded-3xl shadow-2xl border border-red-100 flex flex-col items-center text-center max-w-xs pointer-events-auto">
+            {/* 1. 배경 블러: Scale 없이 오직 Opacity만 조절해서 자연스럽게 사라짐 */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/20 backdrop-blur-[2px]"
+              onClick={() => setShowLimitAlert(false)}
+            />
+
+            {/* 2. 모달 컨텐츠: 얘만 Scale 애니메이션을 줘서 팝업 느낌을 강조 */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }} // 스프링 느낌 추가
+              className="relative bg-white/95 backdrop-blur-lg p-6 rounded-3xl shadow-2xl border border-red-100 flex flex-col items-center text-center max-w-xs pointer-events-auto"
+            >
               <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">
                 <AlertCircle className="w-6 h-6 text-red-500" />
               </div>
@@ -380,13 +399,13 @@ export default function Home() {
               <p className="text-sm text-gray-500 leading-relaxed mb-4">
                 일일 최대 추천 횟수를 모두 사용하셨습니다. 내일 다시 찾아주세요!
               </p>
-              <button 
+              <button
                 onClick={() => setShowLimitAlert(false)}
                 className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors"
               >
                 확인
               </button>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
