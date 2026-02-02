@@ -1,16 +1,434 @@
 import { useState, useEffect, useRef } from "react";
 import { Map, MapMarker as KakaoMapMarker } from "react-kakao-maps-sdk";
 import confetti from "canvas-confetti";
-import { Search, MapPin, Wine, X, SearchX, AlertCircle } from "lucide-react";
+import { Search, MapPin, Wine, X, SearchX, AlertCircle, Sparkles } from "lucide-react";
 import { CategoryBar } from "@/components/CategoryBar";
 import { MapMarker } from "@/components/MapMarker";
 import { RestaurantCard } from "@/components/RestaurantCard";
 import { AILoading } from "@/components/AILoading";
 import { AnimatePresence, motion } from "framer-motion";
-import { LIQUOR_LIST } from "../data/liquorData"; // 주종 데이터 임포트
-import recommendService from "../services/recommendService"; // 서비스 임포트
+import { LIQUOR_LIST } from "../data/liquorData";
+import recommendService from "../services/recommendService";
 
-const SEOUL_CENTER = { lat: 37.5665, lng: 126.9780 };
+const SEOUL_CENTER = { lat: 37.5665, lng: 12.6978 };
+const MAX_CALLS = 3; // 표시용 최대 횟수
+
+export default function Home() {
+  const mapRef = useRef<kakao.maps.Map>(null);
+  
+  const [center, setCenter] = useState<{lat: number, lng: number} | null>(null);
+  const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>(SEOUL_CENTER);
+  const [mapLevel, setMapLevel] = useState(3);
+  
+  const [isInitialLoading, setIsInitialLoading] = useState(true); 
+  const [isLocating, setIsLocating] = useState(false); 
+
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
+  const [showAILoader, setShowAILoader] = useState(false);
+  
+  const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // --- 호출 제한 관련 상태 ---
+  const [callCount, setCallCount] = useState(0);
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
+
+  // --- 검색 관련 상태 ---
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const [filteredLiquors, setFilteredLiquors] = useState<string[]>([]);
+
+  // 1. 서버로부터 최신 잔여(혹은 사용) 횟수를 가져오는 함수
+  const refreshRemainingCount = async () => {
+    try {
+      const count = await recommendService.getRemainingCount();
+      setCallCount(count);
+      console.log("최신 횟수 업데이트:", count); // 디버깅용
+    } catch (error) {
+      console.error("횟수 조회 실패", error);
+    }
+  };
+
+  // 2. 컴포넌트 마운트 시 초기 위치 설정 및 초기 횟수 로드
+  useEffect(() => {
+    getCurrentLocation(true);
+    refreshRemainingCount(); 
+  }, []);
+
+  const getMapBounds = () => {
+    if (!mapRef.current) return null;
+    const bounds = mapRef.current.getBounds();
+    const sw = bounds.getSouthWest();
+    const ne = bounds.getNorthEast();
+    return { minX: sw.getLng(), minY: sw.getLat(), maxX: ne.getLng(), maxY: ne.getLat() };
+  };
+
+  const getCurrentLocation = (isFirstTime = false) => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      if (isFirstTime) setIsInitialLoading(true);
+      else setIsLocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newPos = { lat: latitude, lng: longitude };
+          setCenter(newPos);
+          setMapCenter(newPos); 
+          setIsInitialLoading(false);
+          setIsLocating(false);
+        },
+        () => {
+          if (isFirstTime) setMapCenter(SEOUL_CENTER);
+          setIsInitialLoading(false);
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+    }
+  };
+
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredLiquors([]);
+    } else {
+      const filtered = LIQUOR_LIST.filter(item => 
+        item.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredLiquors(filtered);
+    }
+  }, [searchQuery]);
+
+  // 카테고리 및 검색어 선택 핵심 로직 - 수정된 부분
+  const handleSelectCategory = async (alcohol: string) => {
+    if (selectedCategory === alcohol) {
+      setSelectedCategory(null);
+      setSelectedRestaurantId(null);
+      setRestaurants([]);
+      return;
+    }
+
+    const bounds = getMapBounds();
+    if (!bounds) return;
+
+    // UI 상태 초기화
+    setSelectedCategory(alcohol);
+    setSelectedRestaurantId(null);
+    setShowAILoader(true);
+    setIsLoading(true);
+    setIsSearchFocused(false);
+
+    try {
+      // 1. 추천 API 호출
+      console.log("추천 API 호출 시작:", alcohol);
+      const data = await recommendService.getRecommendations(alcohol, bounds);
+      console.log("추천 API 응답 받음:", data);
+      
+      // 2. 추천 성공 시 즉시 서버의 최신 횟수 조회 (UI 업데이트를 위해 먼저 호출)
+      console.log("최신 횟수 조회 시작");
+      const latestCount = await recommendService.getRemainingCount();
+      console.log("최신 횟수 응답:", latestCount);
+      
+      // 3. 상태 업데이트 (UI에 즉시 반영)
+      setRestaurants(data);
+      setCallCount(latestCount); // 여기서 UI가 즉시 업데이트됨
+      
+      // 디버깅용 로그
+      console.log("UI 상태 업데이트 완료: callCount =", latestCount);
+
+      // 로딩 애니메이션 체감을 위해 약간의 지연 후 로더 종료
+      setTimeout(() => {
+        setShowAILoader(false);
+        setIsLoading(false);
+        
+        if (data.length > 0) {
+          setSelectedRestaurantId(data[0].place.id);
+          confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#FF9F43', '#FFC078', '#FFD8A8']
+          });
+        }
+      }, 1000);
+
+    } catch (error: any) {
+      console.error("추천 실패", error);
+      setShowAILoader(false);
+      setIsLoading(false);
+
+      // 백엔드에서 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS) 시 처리
+      if (error.response && error.response.status === 429) {
+        setShowLimitAlert(true);
+        // 한도 초과 시에도 현재 횟수를 다시 조회해서 동기화
+        refreshRemainingCount();
+      }
+    }
+  };
+
+  const selectedRestaurant = restaurants?.find(r => r.place.id === selectedRestaurantId);
+  
+  useEffect(() => {
+    if (selectedRestaurant) {
+      setMapCenter({ 
+        lat: parseFloat(selectedRestaurant.place.y), 
+        lng: parseFloat(selectedRestaurant.place.x) 
+      });
+    }
+  }, [selectedRestaurantId]);
+
+  return (
+    <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-50 flex flex-col">
+      <AnimatePresence>
+        {isInitialLoading && (
+          <motion.div 
+            key="initial-loader"
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[100] bg-white flex flex-col items-center justify-center px-6"
+          >
+            <Wine className="w-16 h-16 text-primary animate-bounce mb-8" />
+            <h1 className="text-2xl font-bold text-gray-800 mb-2 text-center">오늘 기분에 딱 맞는 술 한 잔, <br/> 어디가 좋을까요?</h1>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="absolute top-0 left-0 right-0 z-[60] pt-4 pb-2">
+        <AnimatePresence mode="wait">
+          {mapLevel > 3 ? (
+            <motion.div
+              key="zoom-message"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="max-w-md mx-auto px-4"
+            >
+              <div className="bg-primary/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-xl border border-white/20 text-center">
+                <p className="text-white font-bold flex items-center justify-center gap-2">
+                  <MapPin className="w-4 h-4 animate-pulse" />
+                  원하는 구역을 찾아 지도를 확대해 주세요!
+                </p>
+                <p className="text-white/80 text-xs mt-1">지도를 확대하면 검색창이 나타납니다 🔍</p>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="search-ui"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <div className="max-w-md mx-auto px-4 w-full mb-3 relative">
+                <div className="relative group">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    placeholder="원하는 주종을 검색해주세요" 
+                    className="w-full pl-10 pr-10 py-3 bg-white rounded-2xl shadow-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-700 font-medium"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    >
+                      <X className="h-4 w-4 text-gray-400" />
+                    </button>
+                  )}
+                </div>
+
+                <AnimatePresence>
+                  {isSearchFocused && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute top-full left-4 right-4 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[70] max-h-[60vh] overflow-y-auto"
+                    >
+                      {filteredLiquors.length > 0 ? (
+                        filteredLiquors.map((liquor) => (
+                          <button
+                            key={liquor}
+                            onClick={() => {
+                              setSearchQuery(liquor);
+                              handleSelectCategory(liquor);
+                            }}
+                            className="w-full px-5 py-4 text-left border-b border-gray-50 last:border-none active:bg-gray-50 flex items-center gap-3 transition-colors"
+                          >
+                            <Wine className="w-4 h-4 text-primary/60" />
+                            <span className="text-gray-700 font-medium">{liquor}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center text-gray-400">
+                          <SearchX className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                          <p className="text-sm">찾으시는 주종이 없나요?<br/>다른 검색어를 입력해 보세요.</p>
+                        </div>
+                      )}
+                      <button 
+                        onClick={() => setIsSearchFocused(false)}
+                        className="w-full py-3 bg-gray-50 text-xs text-gray-400 font-bold uppercase tracking-wider"
+                      >
+                        닫기
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+              
+              {!isSearchFocused && (
+                <div className="relative w-full">
+                  <div className="w-full overflow-x-auto scrollbar-hide">
+                    <CategoryBar 
+                      selectedCategory={selectedCategory} 
+                      onSelectCategory={handleSelectCategory} 
+                    />
+                  </div>
+                  
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="absolute left-4 -bottom-8 flex items-center gap-1.5 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full shadow-sm border border-gray-100"
+                  >
+                    <Sparkles className={`w-3 h-3 ${callCount >= MAX_CALLS ? 'text-red-500' : 'text-primary'}`} />
+                    <span className="text-[11px] font-bold text-gray-600">
+                      오늘 추천 <span className={callCount >= MAX_CALLS ? 'text-red-500' : 'text-primary'}>{callCount}</span> / {MAX_CALLS}
+                    </span>
+                  </motion.div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      <div className="flex-1 w-full h-full relative">
+        <Map
+          ref={mapRef}
+          center={mapCenter}
+          isPanto={true}
+          style={{ width: "100%", height: "100%" }}
+          level={mapLevel}
+          onDragEnd={(map) => {
+            const latlng = map.getCenter();
+            setMapCenter({ lat: latlng.getLat(), lng: latlng.getLng() });
+          }}
+          onZoomChanged={(map) => setMapLevel(map.getLevel())}
+        >
+          {center && (
+            <KakaoMapMarker 
+              position={center} 
+              image={{
+                src: "/my-location-marker1.png",
+                size: { width: 35, height: 35 }
+              }}
+            />
+          )}
+
+          {!isInitialLoading && restaurants?.map((item) => (
+            <MapMarker
+              key={item.place.id}
+              restaurant={{
+                ...item.place,
+                lat: parseFloat(item.place.y),
+                lng: parseFloat(item.place.x),
+                name: item.place.placeName
+              }}
+              isSelected={selectedRestaurantId === item.place.id}
+              onClick={() => setSelectedRestaurantId(item.place.id)}
+            />
+          ))}
+        </Map>
+        
+        <div className="absolute bottom-6 right-4 z-10 flex flex-col gap-2">
+          <button 
+            onClick={() => getCurrentLocation(false)}
+            className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center border border-gray-100 active:scale-90 transition-all"
+          >
+            <MapPin className={`w-5 h-5 ${isLocating ? 'text-primary animate-spin' : 'text-gray-600'}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* --- 한도 초과 알림 모달 --- */}
+      <AnimatePresence>
+        {showLimitAlert && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="absolute inset-0 z-[110] flex items-center justify-center px-6"
+          >
+            {/* 배경 블러 효과를 위한 오버레이 */}
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setShowLimitAlert(false)} />
+            
+            <div className="relative bg-white/95 backdrop-blur-lg p-6 rounded-3xl shadow-2xl border border-red-100 flex flex-col items-center text-center max-w-xs pointer-events-auto">
+              <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-1">오늘 한도를 다 썼어요!</h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-4">
+                일일 최대 추천 횟수를 모두 사용하셨습니다. 내일 다시 찾아주세요!
+              </p>
+              <button 
+                onClick={() => setShowLimitAlert(false)}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence mode="wait">
+        {showAILoader && selectedCategory && (
+          <AILoading key="loader" category={selectedCategory} />
+        )}
+        
+        {selectedRestaurant && !showAILoader && (
+          <RestaurantCard 
+            key="card"
+            restaurant={{
+              id: selectedRestaurant.place.id,
+              place_name: selectedRestaurant.place.place_name,
+              address_name: selectedRestaurant.place.address_name,
+              reason: selectedRestaurant.reason,
+              place_url: selectedRestaurant.place.place_url,
+              score: selectedRestaurant.score,
+              lat: parseFloat(selectedRestaurant.place.y),
+              lng: parseFloat(selectedRestaurant.place.x),
+            }}
+            onClose={async () => {
+              setSelectedRestaurantId(null);
+              // 2. 서버에서 최신 횟수 가져오기
+              await refreshRemainingCount();
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {!isSearchFocused && (!selectedCategory || !selectedRestaurantId) && !showAILoader && !isInitialLoading && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute bottom-16 left-0 right-0 z-50 px-4 flex justify-center pointer-events-none"
+        >
+          <div className="bg-white/95 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl border border-white/50 text-center pointer-events-auto">
+            <div className="text-sm font-medium text-gray-600 whitespace-nowrap">
+              {selectedCategory 
+                ? <><span className="text-primary font-bold">지도의 마커</span>를 누르거나<p>다른 <span className="text-primary font-bold">주종</span>을 선택해보세요!</p> </>
+                : <><p>🍽️지도 내의 <span className="text-primary font-bold">페어링 맛집</span>을 추천해드려요!</p>상단의 <span className="text-primary font-bold">주종</span>을 선택해보세요!</>
+              }
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 const MOCK_DATA = [
   {
     place: {
@@ -79,335 +497,3 @@ const MOCK_DATA = [
     score: 700
   }
 ];
-export default function Home() {
-  const mapRef = useRef<kakao.maps.Map>(null);
-  
-  const [center, setCenter] = useState<{lat: number, lng: number} | null>(null);
-  const [mapCenter, setMapCenter] = useState<{lat: number, lng: number}>(SEOUL_CENTER);
-  const [mapLevel, setMapLevel] = useState(3);
-  
-  const [isInitialLoading, setIsInitialLoading] = useState(true); 
-  const [isLocating, setIsLocating] = useState(false); 
-
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedRestaurantId, setSelectedRestaurantId] = useState<number | null>(null);
-  const [showAILoader, setShowAILoader] = useState(false);
-  
-  const [restaurants, setRestaurants] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // --- 검색 관련 상태 ---
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [filteredLiquors, setFilteredLiquors] = useState<string[]>([]);
-
-  const getMapBounds = () => {
-    if (!mapRef.current) return null;
-    const bounds = mapRef.current.getBounds();
-    const sw = bounds.getSouthWest();
-    const ne = bounds.getNorthEast();
-    return { minX: sw.getLng(), minY: sw.getLat(), maxX: ne.getLng(), maxY: ne.getLat() };
-  };
-
-  const getCurrentLocation = (isFirstTime = false) => {
-    if (typeof window !== "undefined" && navigator.geolocation) {
-      if (isFirstTime) setIsInitialLoading(true);
-      else setIsLocating(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          const newPos = { lat: latitude, lng: longitude };
-          setCenter(newPos);
-          setMapCenter(newPos); 
-          setIsInitialLoading(false);
-          setIsLocating(false);
-        },
-        () => {
-          if (isFirstTime) setMapCenter(SEOUL_CENTER);
-          setIsInitialLoading(false);
-          setIsLocating(false);
-        },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-      );
-    }
-  };
-
-  useEffect(() => { getCurrentLocation(true); }, []);
-
-  // 검색어 입력 시 자동완성 필터링
-  useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredLiquors([]);
-    } else {
-      const filtered = LIQUOR_LIST.filter(item => 
-        item.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-      setFilteredLiquors(filtered);
-    }
-  }, [searchQuery]);
-
-  // 카테고리 및 검색어 선택 핵심 로직
-  const handleSelectCategory = async (categoryId: string) => {
-    if (selectedCategory === categoryId) {
-      setSelectedCategory(null);
-      setSelectedRestaurantId(null);
-      setRestaurants([]);
-      return;
-    }
-
-    const bounds = getMapBounds();
-    if (!bounds) return;
-
-    setSelectedCategory(categoryId);
-    setSelectedRestaurantId(null);
-    setShowAILoader(true);
-    setIsLoading(true);
-    setIsSearchFocused(false); // 검색창 닫기
-
-    try {
-      // const data = await recommendService.getRecommendations(categoryId, bounds);
-      const data = MOCK_DATA;
-      setRestaurants(data);
-      
-      setTimeout(() => {
-        setShowAILoader(false);
-        setIsLoading(false);
-        if (data.length > 0) {
-          setSelectedRestaurantId(data[0].place.id);
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#FF9F43', '#FFC078', '#FFD8A8']
-          });
-        }
-      }, 1500);
-    } catch (error) {
-      console.error("추천 실패", error);
-      setShowAILoader(false);
-      setIsLoading(false);
-    }
-  };
-
-  const selectedRestaurant = restaurants?.find(r => r.place.id === selectedRestaurantId);
-  
-  useEffect(() => {
-    if (selectedRestaurant) {
-      setMapCenter({ 
-        lat: parseFloat(selectedRestaurant.place.y), 
-        lng: parseFloat(selectedRestaurant.place.x) 
-      });
-    }
-  }, [selectedRestaurantId]);
-
-  return (
-    <div className="relative w-full h-[100dvh] overflow-hidden bg-gray-50 flex flex-col">
-      <AnimatePresence>
-        {isInitialLoading && (
-          <motion.div 
-            key="initial-loader"
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[100] bg-white flex flex-col items-center justify-center px-6"
-          >
-            <Wine className="w-16 h-16 text-primary animate-bounce mb-8" />
-            <h1 className="text-2xl font-bold text-gray-800 mb-2 text-center">오늘 기분에 딱 맞는 술 한 잔, <br/> 어디가 좋을까요?</h1>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* --- 상단 UI (조건부 렌더링) --- */}
-      <div className="absolute top-0 left-0 right-0 z-[60] pt-4 pb-2">
-        <AnimatePresence mode="wait">
-          {mapLevel > 3 ? (
-            /* 지도 확대 유도 메시지 */
-            <motion.div
-              key="zoom-message"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="max-w-md mx-auto px-4"
-            >
-              <div className="bg-primary/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-xl border border-white/20 text-center">
-                <p className="text-white font-bold flex items-center justify-center gap-2">
-                  <MapPin className="w-4 h-4 animate-pulse" />
-                  원하는 구역을 찾아 지도를 확대해 주세요!
-                </p>
-                <p className="text-white/80 text-xs mt-1">지도를 확대하면 검색창이 나타납니다 🔍</p>
-              </div>
-            </motion.div>
-          ) : (
-            /* 검색 및 카테고리 바 */
-            <motion.div
-              key="search-ui"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <div className="max-w-md mx-auto px-4 w-full mb-3 relative">
-                <div className="relative group">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => setIsSearchFocused(true)}
-                    placeholder="원하는 주종을 검색해주세요" 
-                    className="w-full pl-10 pr-10 py-3 bg-white rounded-2xl shadow-lg border border-gray-100 focus:outline-none focus:ring-2 focus:ring-primary/50 text-gray-700 font-medium"
-                  />
-                  {searchQuery && (
-                    <button 
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2"
-                    >
-                      <X className="h-4 h-4 text-gray-400" />
-                    </button>
-                  )}
-                </div>
-
-                {/* 자동완성 드로워(드롭다운) */}
-                <AnimatePresence>
-                  {isSearchFocused && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 10 }}
-                      className="absolute top-full left-4 right-4 mt-2 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[70] max-h-[60vh] overflow-y-auto"
-                    >
-                      {filteredLiquors.length > 0 ? (
-                        filteredLiquors.map((liquor) => (
-                          <button
-                            key={liquor}
-                            onClick={() => {
-                              setSearchQuery(liquor);
-                              handleSelectCategory(liquor);
-                            }}
-                            className="w-full px-5 py-4 text-left border-b border-gray-50 last:border-none active:bg-gray-50 flex items-center gap-3 transition-colors"
-                          >
-                            <Wine className="w-4 h-4 text-primary/60" />
-                            <span className="text-gray-700 font-medium">{liquor}</span>
-                          </button>
-                        ))
-                      ) : (
-                        <div className="p-8 text-center text-gray-400">
-                          <SearchX className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                          <p className="text-sm">찾으시는 주종이 없나요?<br/>다른 검색어를 입력해 보세요.</p>
-                        </div>
-                      )}
-                      <button 
-                        onClick={() => setIsSearchFocused(false)}
-                        className="w-full py-3 bg-gray-50 text-xs text-gray-400 font-bold uppercase tracking-wider"
-                      >
-                        닫기
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              
-              {!isSearchFocused && (
-                <div className="w-full overflow-x-auto scrollbar-hide">
-                  <CategoryBar 
-                    selectedCategory={selectedCategory} 
-                    onSelectCategory={handleSelectCategory} 
-                  />
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {/* Map Section */}
-      <div className="flex-1 w-full h-full relative">
-        <Map
-          ref={mapRef}
-          center={mapCenter}
-          isPanto={true}
-          style={{ width: "100%", height: "100%" }}
-          level={mapLevel}
-          onDragEnd={(map) => {
-            const latlng = map.getCenter();
-            setMapCenter({ lat: latlng.getLat(), lng: latlng.getLng() });
-          }}
-          onZoomChanged={(map) => setMapLevel(map.getLevel())}
-        >
-          {center && (
-            <KakaoMapMarker 
-              position={center} 
-              image={{
-                src: "/my-location-marker1.png",
-                size: { width: 35, height: 35 }
-              }}
-            />
-          )}
-
-          {!isInitialLoading && restaurants?.map((item) => (
-            <MapMarker
-              key={item.place.id}
-              restaurant={{
-                ...item.place,
-                lat: parseFloat(item.place.y),
-                lng: parseFloat(item.place.x),
-                name: item.place.placeName
-              }}
-              isSelected={selectedRestaurantId === item.place.id}
-              onClick={() => setSelectedRestaurantId(item.place.id)}
-            />
-          ))}
-        </Map>
-        
-        <div className="absolute bottom-6 right-4 z-10 flex flex-col gap-2">
-          <button 
-            onClick={() => getCurrentLocation(false)}
-            className="w-11 h-11 bg-white rounded-full shadow-lg flex items-center justify-center border border-gray-100 active:scale-90 transition-all"
-          >
-            <MapPin className={`w-5 h-5 ${isLocating ? 'text-primary animate-spin' : 'text-gray-600'}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Overlay UI */}
-      <AnimatePresence mode="wait">
-        {showAILoader && selectedCategory && (
-          <AILoading key="loader" category={selectedCategory} />
-        )}
-        
-        {selectedRestaurant && !showAILoader && (
-          <RestaurantCard 
-            key="card" 
-            restaurant={{
-              id: selectedRestaurant.place.id,
-              place_name: selectedRestaurant.place.place_name,
-              address_name: selectedRestaurant.place.address_name,
-              reason: selectedRestaurant.reason,
-              place_url:selectedRestaurant.place.place_url,
-              score :selectedRestaurant.score,
-              lat: parseFloat(selectedRestaurant.place.y),
-              lng: parseFloat(selectedRestaurant.place.x),
-            }} 
-            onClose={() => setSelectedRestaurantId(null)} 
-          />
-        )}
-      </AnimatePresence>
-
-      {/* 가이드 메시지 (검색 중이 아닐 때만 노출) */}
-      {!isSearchFocused && (!selectedCategory || !selectedRestaurantId) && !showAILoader && !isInitialLoading && (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute bottom-16 left-0 right-0 z-50 px-4 flex justify-center pointer-events-none"
-        >
-          <div className="bg-white/95 backdrop-blur-md px-6 py-3 rounded-full shadow-2xl border border-white/50 text-center pointer-events-auto">
-            <div className="text-sm font-medium text-gray-600 whitespace-nowrap">
-              {selectedCategory 
-                ? <><span className="text-primary font-bold">지도의 마커</span>를 누르거나<p>다른 <span className="text-primary font-bold">주종</span>을 선택해보세요!</p> </>
-                : <><p>🍽️지도 내의 <span className="text-primary font-bold">페어링 맛집</span>을 추천해드려요!</p>상단의 <span className="text-primary font-bold">주종</span>을 선택해보세요!</>
-              }
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </div>
-  );
-}

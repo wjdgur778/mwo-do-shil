@@ -1,13 +1,10 @@
 package com.example.mwo_do_shil.external.kakao;
 
-import com.example.mwo_do_shil.domain.recommand.dto.KakaoPlaceDto;
-import com.example.mwo_do_shil.domain.recommand.dto.KakaoSearchResponseDto;
-import com.example.mwo_do_shil.domain.recommand.dto.RectDto;
+import com.example.mwo_do_shil.domain.recommend.dto.KakaoSearchResponseDto;
+import com.example.mwo_do_shil.domain.recommend.dto.RectDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -21,11 +18,8 @@ import java.util.concurrent.CompletableFuture;
 @Service
 @RequiredArgsConstructor
 public class KakaoApiService {
-    
-    private final WebClient webClient;
-    
-    @Value("${kakao.api.key}")
-    private String kakaoApiKey;
+    @Qualifier("KakaoWebClient")
+    private final WebClient KakaoWebClient;
 
     /**
      * memo
@@ -33,18 +27,24 @@ public class KakaoApiService {
      *  이에 대해서는 더욱 자세히게 다뤄야 한다.
      */
 //    @Async("kakaoExecutor")
-    public CompletableFuture<KakaoSearchResponseDto> searchPlacesAsync(RectDto rect) {
+    public CompletableFuture<KakaoSearchResponseDto> searchPlaces(RectDto rect) {
         try {
             // 키워드는 :"맛집" 으로 통일
-            String url = "https://dapi.kakao.com/v2/local/search/keyword.json" +
-                    "?query=맛집" +
-                    "&rect=" + String.format("%s,%s,%s,%s", 
-                            rect.getMinX(), rect.getMinY(), rect.getMaxX(), rect.getMaxY());
-            
-            Mono<KakaoSearchResponseDto> responseMono = webClient.get()
-                    .uri(url)
-                    .header("Authorization", "KakaoAK " + kakaoApiKey)
-                    .accept(MediaType.APPLICATION_JSON)
+            Mono<KakaoSearchResponseDto> responseMono = KakaoWebClient.get()
+                    .uri(urlBuilder->urlBuilder
+                            .path("/v2/local/search/keyword.json")
+                            .queryParam("query", "맛집")
+                            .queryParam(
+                                    "rect",
+                                    String.format(
+                                            "%s,%s,%s,%s",
+                                            rect.getMinX(),
+                                            rect.getMinY(),
+                                            rect.getMaxX(),
+                                            rect.getMaxY()
+                                    )
+                            )
+                            .build())
                     .retrieve()
                     .bodyToMono(KakaoSearchResponseDto.class)
                     .timeout(Duration.ofSeconds(10));

@@ -1,6 +1,5 @@
-package com.example.mwo_do_shil.domain.recommand.dto;
+package com.example.mwo_do_shil.domain.recommend.dto;
 
-import io.swagger.v3.oas.annotations.Parameter;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

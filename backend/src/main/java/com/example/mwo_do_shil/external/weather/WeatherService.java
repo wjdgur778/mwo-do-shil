@@ -3,15 +3,14 @@ package com.example.mwo_do_shil.external.weather;
 import com.example.mwo_do_shil.external.weather.dto.WeatherResponseDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -19,7 +18,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WeatherService {
 
-    private final WebClient webClient;
+    @Qualifier("weatherWebClient")
+    private final WebClient weatherWebClient;
 
     @Value("${weather.api.key}")
     private String weatherApiKey;
@@ -40,16 +40,15 @@ public class WeatherService {
         BigDecimal lon = center(minX, maxX);
         BigDecimal lat = center(minY, maxY);
         try {
-            String url = "https://api.openweathermap.org/data/2.5/weather" +
-                    "?lat=" + lat +
-                    "&lon=" + lon +
-                    "&appid=" + weatherApiKey +
-                    "&units=metric";
-
-
-            WeatherResponseDto result = webClient.get()
-                    .uri(url)
-                    .accept(MediaType.APPLICATION_JSON)
+            WeatherResponseDto result = weatherWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/weather")
+                            .queryParam("lat", lat)
+                            .queryParam("lon", lon)
+                            .queryParam("appid", weatherApiKey)
+                            .queryParam("units", "metric")
+                            .build()
+                    )
                     .retrieve()
                     .bodyToMono(WeatherResponseDto.class)
                     .timeout(Duration.ofSeconds(10))

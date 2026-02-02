@@ -20,6 +20,7 @@ bin/
 # Application configuration with sensitive data
 src/main/resources/application.yml
 src/main/resources/application-prod.yml
+src/main/resources/firebase-service-account.json
 
 # Keep templates but ignore actual config files with real keys
 # src/main/resources/application-template.yml

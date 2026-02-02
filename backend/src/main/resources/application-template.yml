@@ -4,14 +4,29 @@
 
 kakao:
   api:
-    key: YOUR_KAKAO_API_KEY_HERE
+    key: KAKAO_API_KEY
+firebase:
+  api:
+    key: FIREBASE_API_KEY
 
+weather:
+  api:
+    key: WEATHER_API_KEY
+
+ai:
+  google:
+    genai:
+      api:
+        key: GOOGLE_GENAI_API_KEY
 spring:
   datasource:
     url: jdbc:h2:mem:testdb
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
 
   jpa:
     hibernate:
@@ -22,14 +37,11 @@ spring:
     console:
       enabled: true
 
-  ai:
-    google:
-      genai:
-        api-key: YOUR_GOOGLE_API_KEY_HERE
+
         # model: gemini-2.0-flash-exp
 
 server:
-  port: 8081
+  port: 8080
 
 # Logging configuration for development
 logging:
