@@ -1,19 +1,20 @@
 package com.example.mwo_do_shil.domain.recommand;
 
+import com.example.mwo_do_shil.auth.RateLimitService;
 import com.example.mwo_do_shil.domain.recommand.dto.*;
 import com.example.mwo_do_shil.external.kakao.KakaoApiService;
 import com.example.mwo_do_shil.external.llm.LLMRequest;
 import com.example.mwo_do_shil.external.llm.LLMRouter;
 import com.example.mwo_do_shil.external.llm.LLMType;
 import com.example.mwo_do_shil.external.llm.gemini.dto.InputDto;
-import com.example.mwo_do_shil.external.llm.prompt.PromptRenderer;
 import com.example.mwo_do_shil.external.weather.WeatherService;
-import com.example.mwo_do_shil.external.weather.dto.WeatherResponseDto;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -34,16 +35,24 @@ public class RecommendService {
 
     private final KakaoApiService kakaoApiService;
     private final WeatherService weatherService;
-    private final RecommendRepository recommendRepository;
     private final LLMRouter llmRouter;
     private final Gson gson;
 
+    /**
+     *  memo
+     *   아래의 api를 호출한다.
+     *   1. 카카오 키워드 검색 api
+     *   2. 날씨 api
+     *   3. gemini llm api
+     */
     public List<RecommendResponseDto> getRecommend(
+            String uid,
             String alcohol,
             BigDecimal minX,
             BigDecimal minY,
             BigDecimal maxX,
             BigDecimal maxY) {
+
         // kakao local api 호출
         List<KakaoPlaceDto> stores = getStoreList(minX, minY, maxX, maxY);
         // 간소화된 가게 리스트 준비
@@ -75,6 +84,9 @@ public class RecommendService {
                 .filter(store -> selectedIds.contains(store.getId()))
                 .toList();
 
+        if(nextStepStores.isEmpty()) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "추천할 가게가 없습니다.");
+
+
         // 2차 웹 그라운딩
         String recommended_stores = llmRouter.route(LLMType.GEMINI).generateWithWebGrounding(new LLMRequest(Map.of(
                 "alcohol", alcohol
@@ -84,7 +96,7 @@ public class RecommendService {
                 , "address", stores.get(0).getAddress_name() + " 주변"
         ),nextStepStores
         ));
-
+        System.out.println("recommended_stores : " + recommended_stores);
         // String 형태의 json 텍스트를 dto list로 역직렬화
         Type type = new TypeToken<List<RecommendPlaceDto>>() {}.getType();
         List<RecommendPlaceDto> recommendPlaceDtos = gson.fromJson(recommended_stores, type);
