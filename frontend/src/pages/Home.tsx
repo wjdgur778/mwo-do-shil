@@ -33,6 +33,8 @@ export default function Home() {
   // --- 호출 제한 관련 상태 ---
   const [callCount, setCallCount] = useState(0);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
+  const [showNotFoundAlert, setShowNotFoundAlert] = useState(false);
+
 
   // --- 검색 관련 상태 ---
   const [searchQuery, setSearchQuery] = useState("");
@@ -162,6 +164,13 @@ export default function Home() {
         // 한도 초과 시에도 현재 횟수를 다시 조회해서 동기화
         refreshRemainingCount();
       }
+
+      
+      // 백엔드에서 throw new ResponseStatusException(HttpStatus.NOT_FOUND) 시 처리
+      if (error.response && error.response.status === 404) {
+        setShowNotFoundAlert(true);
+      }
+
     }
   };
 
@@ -381,6 +390,38 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+            {/* --- 추천할 가게가 없을 시 안내 카드 --- */}
+      <AnimatePresence>
+        {showNotFoundAlert && (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="absolute inset-0 z-[110] flex items-center justify-center px-6"
+          >
+            {/* 배경 블러 효과를 위한 오버레이 */}
+            <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setShowNotFoundAlert(false)} />
+            
+            <div className="relative bg-white/95 backdrop-blur-lg p-6 rounded-3xl shadow-2xl border border-red-100 flex flex-col items-center text-center max-w-xs pointer-events-auto">
+              <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mb-4">
+                <AlertCircle className="w-6 h-6 text-red-500" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-800 mb-1">{selectedCategory}에 어울리는 가게가 없어요😭</h3>
+              <p className="text-sm text-gray-500 leading-relaxed mb-4">
+                다른 위치에서 원하는 주종으로 검색해보세요!
+              </p>
+              <button 
+                onClick={() => setShowNotFoundAlert(false)}
+                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-colors"
+              >
+                확인
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
 
       <AnimatePresence mode="wait">
         {showAILoader && selectedCategory && (
