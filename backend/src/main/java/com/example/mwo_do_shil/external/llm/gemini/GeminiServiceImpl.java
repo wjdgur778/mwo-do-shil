@@ -6,15 +6,15 @@ import com.example.mwo_do_shil.external.llm.LLMService;
 import com.example.mwo_do_shil.external.llm.gemini.dto.InputDto;
 import com.example.mwo_do_shil.external.llm.prompt.PromptRenderer;
 import com.example.mwo_do_shil.external.llm.prompt.PromptType;
-import com.google.genai.Client;
-import com.google.genai.types.*;
 import com.google.gson.Gson;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
-
-import java.util.Collections;
+import org.springframework.web.reactive.function.client.WebClient;
+//
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 // 빈 이름 "gemini" 설정
@@ -22,90 +22,109 @@ import java.util.Set;
 @Service("gemini")
 @RequiredArgsConstructor
 public class GeminiServiceImpl implements LLMService {
+
     private final PromptRenderer promptRenderer;
     private final Gson gson;
-    private final Client client;
 
-    // 1차 필터링을 거친 가게를 중심으로 웹그라운딩을 통한 추천 결과 generate
-    public String generateWithWebGrounding(LLMRequest llmRequest) {
-        String prompt = promptRenderer.render(
-                PromptType.STORE_ALCOHOL_PAIRING,
-                llmRequest.getParams()
-        );
-        String stores = gson.toJson(llmRequest.getData());
-        //랜더링한 프롬포트에 가게 리스트 붙이기
-        String finalPrompt = prompt + "\n가게 리스트: \n" +stores;
-        System.out.println(finalPrompt);
-
-        // 1. 구글 검색(Google Search) 기능을 담은 도구 생성 (웹 그라운딩 활성화)
-        GoogleSearch googleSearch = GoogleSearch.builder().build();
-
-        // 2. Tool 객체에 googleSearch 주입
-        Tool tool = Tool.builder()
-                .googleSearch(googleSearch) // 기존 googleSearchRetrieval에서 변경
-                .build();
-
-        // 3. Config 설정
-        GenerateContentConfig config = GenerateContentConfig.builder()
-                .tools(Collections.singletonList(tool))
-                .build();
-
-        //4. 실제 llm api에 요청하기
-        GenerateContentResponse response =
-                client.models.generateContent(
-                        "gemini-2.5-flash-lite",
-                        finalPrompt,
-                        config);
-        System.out.println("llm api 호출 완료");
-
-        // 5. 웹 그라운딩 체크
-        // 2. candidates 리스트가 비어있지 않은지 확인
-        if (response.candidates().isPresent()) {
-            var candidate = response.candidates().get().get(0);
-
-            // 3. groundingMetadata가 존재하는지 확인
-            if (candidate.groundingMetadata().isPresent()) {
-                System.out.println("✅ 웹 그라운딩이 성공적으로 수행되었습니다.");
-            } else {
-                System.out.println("ℹ️ 이 답변은 모델의 내부 지식만으로 생성되었습니다.");
-            }
-        } else {
-            System.out.println("⚠️ 모델로부터 응답 후보(Candidate)를 받지 못했습니다.");
-        }
-
-        String cleanJson = response.text()
-                .replaceAll("```json", "")
-                .replaceAll("```", "")
-                .trim();
-
-        return cleanJson;
-    }
+    @Qualifier("geminiWebClient")
+    private final WebClient geminiWebClient;
 
     // 1차 필터링 수행
     public String first_generate(LLMRequest llmRequest) {
+
         String prompt = promptRenderer.render(
                 PromptType.FILTER_STORE_ALCOHOL_PAIRING,
                 llmRequest.getParams()
         );
-        //랜더링한 프롬포트에 가게 리스트 붙이기
-        String stores = gson.toJson(llmRequest.getData());
-        String finalPrompt = prompt + "\n가게 리스트: \n" + stores;
-        System.out.println(finalPrompt);
 
-        //llm api에 요청하기
-        GenerateContentResponse response =
-                client.models.generateContent(
-                        "gemini-2.5-flash-lite",
-                        finalPrompt,
-                        null
-                );
+        String storesJson = gson.toJson(llmRequest.getData());
+        String finalPrompt = prompt + "\n가게 리스트:\n" + storesJson;
+
+        Map<String, Object> requestBody = Map.of(
+                "contents", List.of(
+                        Map.of(
+                                "parts", List.of(
+                                        Map.of("text", finalPrompt)
+                                )
+                        )
+                )
+        );
+
+        Map response = geminiWebClient.post()
+                .uri("/models/gemini-2.5-flash-lite:generateContent")
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
         System.out.println("method:first_generate / llm api 호출 완료");
 
-        return response.text()
+        return extractText(response);
+    }
+
+
+    // 1차 필터링을 거친 가게를 중심으로 웹그라운딩을 통한 추천 결과 generate
+    public String generateWithWebGrounding(LLMRequest llmRequest) {
+
+        String prompt = promptRenderer.render(
+                PromptType.STORE_ALCOHOL_PAIRING,
+                llmRequest.getParams()
+        );
+        //랜더링한 프롬포트에 가게 리스트 붙이기
+        String storesJson = gson.toJson(llmRequest.getData());
+        String finalPrompt = prompt + "\n가게 리스트:\n" + storesJson;
+
+        Map<String, Object> requestBody = Map.of(
+                "contents", List.of(
+                        Map.of(
+                                "parts", List.of(
+                                        Map.of("text", finalPrompt)
+                                )
+                        )
+                ),
+                "tools", List.of(
+                        Map.of(
+                                "google_search", Map.of() // ⭐ 웹 그라운딩 활성화
+                        )
+                )
+        );
+
+        Map response = geminiWebClient.post()
+                .uri("/models/gemini-2.5-flash-lite:generateContent")
+                .bodyValue(requestBody)
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+        System.out.println("method:generateWithWebGrounding / llm api 호출 완료");
+
+        return extractText(response);
+    }
+
+
+
+    @SuppressWarnings("unchecked")
+    private String extractText(Map response) {
+        if (response == null) return "";
+
+        List<Map<String, Object>> candidates =
+                (List<Map<String, Object>>) response.get("candidates");
+
+        if (candidates == null || candidates.isEmpty()) return "";
+
+        Map<String, Object> content =
+                (Map<String, Object>) candidates.get(0).get("content");
+
+        List<Map<String, String>> parts =
+                (List<Map<String, String>>) content.get("parts");
+
+        String text = parts.get(0).get("text");
+
+        return text
                 .replaceAll("```json", "")
                 .replaceAll("```", "")
                 .trim();
     }
+
+
 
     /**
      * memo
@@ -119,10 +138,10 @@ public class GeminiServiceImpl implements LLMService {
      * @param stores
      * @return
      */
-    public static  List<InputDto> toInputList(List<KakaoPlaceDto> stores) {
+    public static List<InputDto> toInputList(List<KakaoPlaceDto> stores) {
         Set<String> excludeKeywords = Set.of("카페", "분식", "간식", "편의점", "샐러드", "패스트푸드", "도시락", "제과");
 
-        return  stores.stream()
+        return stores.stream()
                 .filter(store -> {
                     String category = store.getCategory_name();
                     return excludeKeywords.stream()
