@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("api/recommend")
+@RequestMapping("/api/recommend")
 public class RecommendController {
 
     private final RecommendService recommendService;
