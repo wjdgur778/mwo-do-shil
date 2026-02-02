@@ -17,6 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class ApiRateLimitAspect {
     private final RateLimitService rateLimitService;
+    // I32yJqndB6YCMIEXw3dbI4bibJ72
+    private final String myId = "qsffop5RRVb9ovpeQWDkztqfyxz2 Lra0YJ84vhbNjlN84v3KzK1vdYz1";
 
     @Around("@annotation(com.example.mwo_do_shil.annotation.RateLimitedApi)")
     public Object rateLimit(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -25,7 +27,8 @@ public class ApiRateLimitAspect {
         String uid = SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString();
 
         // 2. 호출 전 한도 체크
-        if (!rateLimitService.checkRateLimit(uid)) {
+        // 간이로 만든 나만 통과하기 로직
+        if (!myId.contains(uid) && !rateLimitService.checkRateLimit(uid)) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "호출 한도 초과");
         }
 
