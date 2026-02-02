@@ -15,7 +15,7 @@ export function MapMarker({ restaurant, isSelected, onClick }: MapMarkerProps) {
         position={{ lat: restaurant.lat, lng: restaurant.lng }}
         onClick={onClick}
         image={{
-          src: "/public/shop-marker.png",
+          src: "/shop-marker.png",
           size: { width: 35, height: 35 },
         }}
       />

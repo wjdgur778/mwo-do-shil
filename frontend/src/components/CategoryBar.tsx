@@ -21,7 +21,7 @@ export function CategoryBar({ selectedCategory, onSelectCategory }: CategoryBarP
     // 2. flex-nowrap을 추가하여 한 줄로 유지합니다.
     <div className="w-full overflow-x-auto no-scrollbar py-2 bg-transparent flex flex-nowrap overflow-y-hidden">
       {/* 3. mx-auto를 제거하고 px-4로 좌우 여백만 확보합니다. */}
-      <div className="flex space-x-3 px-4 flex-nowrap">
+      <div className="flex space-x-3 px-4 flex-nowrap ">
         {CATEGORIES.map((cat) => (
           <motion.button
             key={cat.id}
@@ -29,7 +29,7 @@ export function CategoryBar({ selectedCategory, onSelectCategory }: CategoryBarP
             whileTap={{ scale: 0.95 }}
             // 4. flex-shrink-0을 추가하여 아이콘이 찌그러지지 않게 고정합니다.
             className={`
-              flex-shrink-0 flex items-center space-x-2 px-4 py-2.5 rounded-full border shadow-sm transition-all duration-300
+              flex-shrink-0 flex items-center space-x-2 px-4 py-2 rounded-full border shadow-sm transition-all duration-300
               ${
                 selectedCategory === cat.id
                   ? "bg-primary text-white border-primary shadow-lg shadow-primary/30"
