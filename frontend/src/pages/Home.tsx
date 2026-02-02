@@ -122,8 +122,8 @@ export default function Home() {
     try {
       // 1. 추천 API 호출
       console.log("추천 API 호출 시작:", alcohol);
-      // const data = await recommendService.getRecommendations(alcohol, bounds);
-      const data = MOCK_DATA;
+      const data = await recommendService.getRecommendations(alcohol, bounds);
+      // const data = MOCK_DATA;
       console.log("추천 API 응답 받음:", data);
       
       // 2. 추천 성공 시 즉시 서버의 최신 횟수 조회 (UI 업데이트를 위해 먼저 호출)
