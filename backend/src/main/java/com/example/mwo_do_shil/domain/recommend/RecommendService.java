@@ -269,7 +269,7 @@ public class RecommendService {
                     .collect(Collectors.toList());
 //            todo
 //             주석해제 필수
-//            firestoreService.setStoreWithBatch(results);
+            firestoreService.setStoreWithBatch(results);
 
             return results;
         } catch (Exception e) {
