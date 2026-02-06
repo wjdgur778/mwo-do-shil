@@ -17,14 +17,13 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class ApiRateLimitAspect {
     private final RateLimitService rateLimitService;
-    // I32yJqndB6YCMIEXw3dbI4bibJ72
     private final String myId = "qsffop5RRVb9ovpeQWDkztqfyxz2 Lra0YJ84vhbNjlN84v3KzK1vdYz1";
 
     @Around("@annotation(com.example.mwo_do_shil.annotation.RateLimitedApi)")
     public Object rateLimit(ProceedingJoinPoint joinPoint) throws Throwable {
-        log.info("호출량 제한 AOP 호출 성공 ");
         // 1. 사용자 ID 추출 (Firebase Auth 또는 헤더)
         String uid = SecurityContextHolder.getContext().getAuthentication().getPrincipal().toString();
+        log.info("호출량 제한 AOP 호출 성공 uid: "+uid);
 
         // 2. 호출 전 한도 체크
         // 간이로 만든 나만 통과하기 로직
