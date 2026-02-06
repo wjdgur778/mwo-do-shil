@@ -113,7 +113,7 @@ public class RateLimitService {
     }
 
     public void incrementCount(Transaction tx, DocumentReference ref, DocumentSnapshot snap, String today) {
-        // 현재 시간 기준으로 7일 뒤에 삭제되도록 설정 (2일 유지 -> 어차피 하루동안의 호출량을 제한하는 기능을 가지므로)
+        // 현재 시간 기준으로 2일 뒤에 삭제되도록 설정 (2일 유지 -> 어차피 하루동안의 호출량을 제한하는 기능을 가지므로)
         // TTL 설정.
         long expireTimestamp = System.currentTimeMillis() / 1000 + (60 * 60 * 24 * 2);
         log.info("추천 api 호출 성공 후 incrementCount() 호출");

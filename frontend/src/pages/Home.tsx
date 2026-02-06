@@ -152,7 +152,7 @@ export default function Home() {
             colors: ['#FF9F43', '#FFC078', '#FFD8A8']
           });
         }
-      }, 8000);
+      }, 10);
 
     } catch (error: any) {
       console.error("추천 실패", error);
