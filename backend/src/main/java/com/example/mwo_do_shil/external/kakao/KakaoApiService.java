@@ -1,6 +1,6 @@
 package com.example.mwo_do_shil.external.kakao;
 
-import com.example.mwo_do_shil.domain.recommend.dto.KakaoSearchResponseDto;
+import com.example.mwo_do_shil.external.kakao.dto.KakaoSearchResponseDto;
 import com.example.mwo_do_shil.domain.recommend.dto.RectDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,6 @@ import java.util.concurrent.CompletableFuture;
 @Service
 @RequiredArgsConstructor
 public class KakaoApiService {
-    @Qualifier("KakaoWebClient")
     private final WebClient KakaoWebClient;
 
     /**

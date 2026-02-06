@@ -18,7 +18,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WeatherService {
 
-    @Qualifier("weatherWebClient")
     private final WebClient weatherWebClient;
 
     @Value("${weather.api.key}")

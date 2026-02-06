@@ -1,4 +1,4 @@
-package com.example.mwo_do_shil.domain.recommend.dto;
+package com.example.mwo_do_shil.external.kakao.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
