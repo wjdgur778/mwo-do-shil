@@ -112,7 +112,7 @@ public class GeminiServiceImpl implements LLMService {
                     log.error("❌ Gemini 호출/파싱 실패", e);
                     return Mono.empty(); // ← 실패한 건 그냥 버림
                 })
-                .timeout(Duration.ofSeconds(10))
+                .timeout(Duration.ofSeconds(14))
                 .toFuture();
     }
 
