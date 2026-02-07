@@ -23,13 +23,10 @@ public class GeminiWebClientConfig {
 
         ConnectionProvider provider =
                 ConnectionProvider.builder("gemini-pool")
-                        .maxConnections(8)                 // ⭐ 동시 호출 수
+                        .maxConnections(10)                 // ⭐ 동시 호출 수
                         .pendingAcquireMaxCount(40)        // 대기 큐
                         .pendingAcquireTimeout(Duration.ofSeconds(40))
                         .build();
-
-        HttpClient httpClient = HttpClient.create(provider)
-                .responseTimeout(Duration.ofSeconds(10));
 
 
 

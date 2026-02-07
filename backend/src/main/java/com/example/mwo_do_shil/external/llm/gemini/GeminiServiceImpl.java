@@ -89,6 +89,9 @@ public class GeminiServiceImpl implements LLMService {
                         Map.of(
                                 "google_search", Map.of() // ⭐ 웹 그라운딩 활성화
                         )
+                ), "generationConfig", Map.of(  // ⭐ 여기에!
+                        "temperature", 0.2,
+                        "topP", 0.8
                 )
         );
 
@@ -97,9 +100,6 @@ public class GeminiServiceImpl implements LLMService {
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .doOnNext(response -> {
-//                    log.debug("📦 Gemini raw response map = {}", response);
-                })
                 .map(this::extractText)
                 .doOnNext(text -> {
                     log.debug("🧾 Extracted text = {}", text);

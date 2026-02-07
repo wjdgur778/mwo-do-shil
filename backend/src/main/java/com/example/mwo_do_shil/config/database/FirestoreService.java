@@ -48,6 +48,7 @@ public class FirestoreService {
                     Long id = Long.valueOf(snapshot.getId());
                     if (!snapshot.exists()) {
                         noExistIds.add(new InputDto(id, storesMap.get(id)));
+                        continue;
                     }
 
                     String name = snapshot.getString("name");
@@ -62,7 +63,7 @@ public class FirestoreService {
             // 로그 꼭 찍자…
             log.error("firebase 가게 정보 조회 에러 {e ={}}", e.getMessage());
         }
-        return List.of();
+        return new ArrayList<>();
     }
     // batch를 통해 가게의 정보를 한번에 set
     public void setStoreWithBatch(List<InputForRecommendDto> list){
