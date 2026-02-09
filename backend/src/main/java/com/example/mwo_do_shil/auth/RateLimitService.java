@@ -21,7 +21,7 @@ import java.util.Map;
 public class RateLimitService {
     private final Firestore firestore;
     private final int USER_DAILY_LIMIT = 3;
-    private final int SYSTEM_DAILY_LIMIT = 600;
+    private final int SYSTEM_DAILY_LIMIT = 150;
     // 상수로 선언해두면 오타 방지 및 재사용에 좋습니다.
     private static final ZoneId KST = ZoneId.of("Asia/Seoul");
 

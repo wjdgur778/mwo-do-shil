@@ -74,8 +74,8 @@ public class GeminiServiceImpl implements LLMService {
                 PromptType.EVIDENCE_STORE_ALCOHOL_PAIRING,
                 llmRequest.getParams()
         );
-        String stores = gson.toJson(llmRequest.getData());
-        String finalPrompt = prompt + "\n가게정보 : \n" + stores;
+        String store = gson.toJson(llmRequest.getData());
+        String finalPrompt = prompt + "\n- 가게정보 : \n" + store;
         System.out.println("[step.2] 프롬프트 : \n" + finalPrompt);
 
         Map<String, Object> requestBody = Map.of(
@@ -112,7 +112,7 @@ public class GeminiServiceImpl implements LLMService {
                     log.error("❌ Gemini 호출/파싱 실패", e);
                     return Mono.empty(); // ← 실패한 건 그냥 버림
                 })
-                .timeout(Duration.ofSeconds(14))
+                .timeout(Duration.ofSeconds(120))
                 .toFuture();
     }
 
@@ -140,7 +140,7 @@ public class GeminiServiceImpl implements LLMService {
         );
 
         Map response = geminiWebClient.post()
-                .uri("/models/gemini-2.5-flash-lite:generateContent")
+                .uri("/models/gemini-2.5-flash-lite-preview-09-2025:generateContent")
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)
