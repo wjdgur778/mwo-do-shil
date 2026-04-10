@@ -56,7 +56,7 @@ public class GeminiServiceImpl implements LLMService {
         );
 
         Map response = geminiWebClient.post()
-                .uri("/models/gemini-2.5-flash-lite:generateContent")
+                .uri("/models/gemini-3.1-flash-lite-preview:generateContent")
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)
@@ -96,7 +96,7 @@ public class GeminiServiceImpl implements LLMService {
         );
 
         return geminiWebClient.post()
-                .uri("/models/gemini-2.5-flash-lite:generateContent")
+                .uri("/models/gemini-3-flash-preview:generateContent")
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)
@@ -140,7 +140,7 @@ public class GeminiServiceImpl implements LLMService {
         );
 
         Map response = geminiWebClient.post()
-                .uri("/models/gemini-2.5-flash-lite-preview-09-2025:generateContent")
+                .uri("/models/gemini-3.1-flash-lite-preview:generateContent")
                 .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)

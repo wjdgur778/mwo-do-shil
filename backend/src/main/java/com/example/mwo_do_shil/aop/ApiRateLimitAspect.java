@@ -35,7 +35,7 @@ public class ApiRateLimitAspect {
             // 3. API 호출
             Object result = joinPoint.proceed();
 
-            // 4. 성공 → 카운트 증가 (비동기)
+            // 4. 성공 → 카운트 증가
             rateLimitService.incrementUsage(uid);
 
             return result;
